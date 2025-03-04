@@ -1,0 +1,66 @@
+sudo useradd -s /bin/bash -d /opt/stack -m stack
+sudo chmod +x /opt/stack
+echo "stack ALL=(ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/stack
+sudo -u stack -i
+git clone https://opendev.org/openstack/devstack
+cd devstack
+ADMIN_PASSWORD=admin
+DATABASE_PASSWORD=$ADMIN_PASSWORD
+RABBIT_PASSWORD=$ADMIN_PASSWORD
+SERVICE_PASSWORD=$ADMIN_PASSWORD
+nano local.conf
+[[local|localrc]]
+Địa chỉ IP của máy chủ cài đặt DevStack
+HOST_IP=192.168.1.0  # Thay bằng IP của máy bạn
+
+Mật khẩu cho các dịch vụ quan trọng
+ADMIN_PASSWORD=admin
+DATABASE_PASSWORD=$ADMIN_PASSWORD
+RABBIT_PASSWORD=$ADMIN_PASSWORD
+SERVICE_PASSWORD=$ADMIN_PASSWORD
+
+Kích hoạt các dịch vụ cơ bản
+ENABLED_SERVICES+=,key,n-api,n-crt,n-obj,n-cpu,n-cond,n-sch,n-cauth,placement-api,placement-client
+
+Kích hoạt Senlin và Senlin-Dashboard
+enable_plugin senlin https://opendev.org/openstack/senlin stable/2023.2
+enable_plugin senlin-dashboard https://opendev.org/openstack/senlin-dashb... stable/2023.2
+
+Đặt tên log để theo dõi dễ dàng hơn
+LOGFILE=/opt/stack/logs/stack.sh.log
+
+./stack.sh
+
+
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+CSRF_COOKIE_SECURE = False
+SESSION_COOKIE_SECURE = False
+SESSION_COOKIE_DOMAIN = None
+CSRF_TRUSTED_ORIGINS = ['https://*.ngrok-free.app', 'https://*.ngrok.io']
+sudo nano /usr/share/openstack-dashboard/openstack_dashboard/local/local_settings.py
+
+#service
+Image cho glance
+wget https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img
+openstack image create "Ubuntu-22.04" --file jammy-server-cloudimg-amd64.img --disk-format qcow2 --container-format bare --public
+
+# Network
+openstack network create demo-net
+openstack subnet create --network demo-net --subnet-range 192.168.10.0/24 demo-subnet
+
+#flavor
+openstack flavor create --vcpus 1 --ram 2048 --disk 10 demo-flavor
+
+#SSH
+ssh-keygen -t rsa -b 2048 -f ~/demo-key
+openstack keypair create --public-key ~/demo-key.pub demo-key
+
+#instance
+openstack server create --image "Ubuntu-22.04" --flavor demo-flavor --network demo-net --key-name demo-key demo-instance
+
+#volume
+openstack volume create --size 10 demo-volume
+openstack server add volume demo-instance demo-volume
+#loadbalancer
+openstack loadbalancer create --name demo-lb --vip-subnet-id demo-subnet
