@@ -50,7 +50,7 @@ EOL
   openstack server create --image "Ubuntu-22.04" --flavor m1.small --network demo-net --key-name demo-key demo-instance
   openstack volume create --size 10 demo-volume
   openstack server add volume demo-instance demo-volume
-  EOF
+EOF
       sudo systemctl restart apache2
     SHELL
   end
